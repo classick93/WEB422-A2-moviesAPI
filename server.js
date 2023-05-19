@@ -1,114 +1,118 @@
-/*********************************************************************************
- *  WEB422 – Assignment 1
- *  I declare that this assignment is my own work in accordance with Seneca  Academic Policy.
- *  No part of this assignment has been copied manually or electronically from any other source
- *  (including web sites) or distributed to other students.
- *
- *  Name: ____Seonghoon Kim________ Student ID: ___shkim61___ Date: __2023-05-19
- *  Cyclic Link: _____https://angry-puce-kitten.cyclic.app______________________________
- *
- ********************************************************************************/
-
-// Setup
-const cors = require("cors");
-const express = require("express");
+/**********************************************************************************
+*  WEB422 – Assignment 1
+*  I declare that this assignment is my own work in accordance with Seneca  Academic Policy.  
+*  No part of this assignment has been copied manually or electronically from any other source
+*  (including web sites) or distributed to other students.
+* 
+*  Name: Jason Shin
+*  Student ID: 111569216
+*  Date: May 18, 2023
+*  Cyclic Link: https://white-gosling-hat.cyclic.app/
+*
+**********************************************************************************/ 
+const express = require('express');
+const cors = require('cors');
 require("dotenv").config();
-const app = express();
+// database set up
 const MoviesDB = require("./modules/moviesDB.js");
 const db = new MoviesDB();
-
+// initialize app and port
+const app = express();
 const HTTP_PORT = process.env.PORT || 8080;
-
+// help prevent cross-origin restrictions and ensure API can be accessed from different sources
 app.use(cors());
+// ensure server can parse the JSON provided in the request body for routes
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.json({ message: "API Listening" });
+// initialize module before server starts
+db.initialize(process.env.MONGODB_CONN_STRING)
+.then(()=>{
+    app.listen(HTTP_PORT, () => {
+        console.log(`Server listening on: ${HTTP_PORT}`);
+    });
+})
+.catch((err)=>{
+    console.log(err);
 });
 
-db.initialize(process.env.MONGODB_CONN_STRING)
-  .then(() => {
-    app.listen(HTTP_PORT, () => {
-      console.log(`Server listening on port ${HTTP_PORT}`);
+// home page route
+app.get('/', (req, res) => {
+    res.json({ message: 'API Listening' });
+});
+
+// add new movie - POST /api/movies
+app.post("/api/movies", (req, res) => {
+    db.addNewMovie(req.body)
+    .then((data) => {
+        res.status(201).json(data)
+    })
+    .catch(() => {
+        res.status(500).json({error: err})
     });
-  })
-  .catch((err) => {
-    console.log(err);
+});
+
+// get movies by id - GET /api/movies
+app.get("/api/movies/:id", (req, res) => {
+    const movieId = req.params.id; 
+    db.getMovieById(movieId)
+      .then((data) => {
+        if (data) {
+          res.json({ message: `Get movie with ID: ${data}` }); 
+        } else {
+          res.status(204).end(); 
+        }
+      })
+      .catch((err) => {
+        res.status(500).json({ error: "Failed to get movie" });
+      });
   });
 
-// POST /api/movies (Add new)
-app.post("/api/movies", (req, res) => {
-  const movie = req.body; // Get the movie data from the request body
-  db.addNewMovie(movie)
-    .then((newMovie) => {
-      res.status(201).json({ message: `Added a new movie: ${newMovie}` }); // Return the newly created movie object
-    })
-    .catch((err) => {
-      res.status(500).json({ error: "Failed to add new movie" });
-    });
-});
-
-// GET /api/movies (Get all)
+// get movies by page, perPage, and title - GET /api/movies 
+// example--> /api/movies?page=1&perPage=5&title=The Avengers
 app.get("/api/movies", (req, res) => {
-  const page = parseInt(req.query.page); // Get the page parameter (integer)
-  const perPage = parseInt(req.query.perPage); // Get the perPage parameter (integer)
-  const title = req.query.title; // Get the title parameter (string)
-  db.getAllMovies(page, perPage, title)
-    .then((movies) => {
-      res.json(movies); // Return the movies array to the client
+    db.getAllMovies(req.query.page, req.query.perPage, req.query.title)
+    .then((data) => {
+        res.json(data);
     })
     .catch((err) => {
-      res.status(500).json({ error: "Failed to get movies" });
+        res.status(500).json({ error: err });
     });
 });
 
-// GET /api/movies/:id (Get one)
-app.get("/api/movies/:id", (req, res) => {
-  const movieId = req.params.id; // Get the movieId from the route parameter
-  db.getMovieById(movieId)
-    .then((movie) => {
-      if (movie) {
-        res.json({ message: `Get a movie with ID: ${movie}` }); // Return the movie object to the client
-      } else {
-        res.status(204).end(); // Return a status code 204 if movie not found
-      }
-    })
-    .catch((err) => {
-      res.status(500).json({ error: "Failed to get movie" });
-    });
-});
-
-// PUT /api/movies/:id
+// update movie by given id - PUT /api/movies/:id
+// example --> /api/movies/573a1391f29313caabcd956e
 app.put("/api/movies/:id", (req, res) => {
-  const movieId = req.params.id; // Get the movieId from the route parameter
-  const movieData = req.body; // Get the updated movie data from the request body
-  db.updateMovieById(movieData, movieId)
-    .then((result) => {
-      if (result.nModified === 0) {
-        res.status(204).end(); // Return a status code 204 if no movie was updated
-      } else {
-        res.json({ message: `Updated a movie with ID: ${movieID}` });
-      }
+    const movId = req.params.id; 
+    const movData = req.body; 
+    db.updateMovieById(movData, movId)
+      .then((result) => {
+        if (result.nModified === 0) {
+          res.status(204).end(); 
+        } else {
+          res.json({ message: `Updated movie ID: ${movID}` });
+        }
+      })
+      .catch((err) => {
+        res.status(500).json({ error: "Failed to update movie" });
+      });
+  });
+
+// delete movie by given id - DELETE /api/movies/:id
+app.delete("/api/movies/:id", (req, res) => {
+    const id = req.params.id;
+    db.deleteMovieById(id)
+    .then(() => {
+        res.status(201).json({ message: `Movie ID: ${id} has been deleted` });
     })
     .catch((err) => {
-      res.status(500).json({ error: "Failed to update movie" });
+        res.status(500).json({ error: err });
     });
 });
 
-// DELETE /api/movies/:id
-app.delete("/api/movies/:id", (req, res) => {
-  const movieId = req.params.id; // Get the movieId from the route parameter
-  db.deleteMovieById(movieId)
-    .then((result) => {
-      if (result.deletedCount === 0) {
-        res.status(204).end(); // Return a status code 204 if no movie was deleted
-      } else {
-        res.json({
-          message: `Deleted a movie with ID: ${movieID}`,
-        });
-      }
-    })
-    .catch((err) => {
-      res.status(500).json({ error: "Failed to delete movie" });
-    });
-});
+// page not found 
+app.use((req, res) => {
+    res.status(404).json({ message: "Page not found" });
+}); 
+
+
+
