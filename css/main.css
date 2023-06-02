@@ -1,0 +1,20 @@
+/* Grid */
+#moviesTable tr:hover {
+  cursor: pointer;
+}
+
+/* Navbar */
+.navbar-brand {
+  font-size: x-large;
+  font-weight: 500;
+}
+
+.searchbar-btn {
+  margin-left: 4px;
+}
+
+#searchForm .btn,
+#searchForm input {
+  border: 1px solid;
+  font-weight: 500;
+}
